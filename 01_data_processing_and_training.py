@@ -7,8 +7,9 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import ShuffleSplit, learning_curve
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, roc_curve, auc
 import joblib
 import streamlit as st
 from datetime import datetime, timedelta
@@ -124,6 +125,55 @@ def train_model(X, y):
     st.write(f"**Accuracy:** {acc:.3f}")
     st.text("Classification Report:\n" + classification_report(y_test, y_pred, digits=3))
     
+    # Learning curve (training vs validation accuracy)
+    st.subheader("📈 Learning Curve")
+    cv = ShuffleSplit(n_splits=3, test_size=0.2, random_state=42)
+    train_sizes, train_scores, val_scores = learning_curve(
+        model,
+        X_train_full,
+        y,
+        cv=cv,
+        scoring='accuracy',
+        n_jobs=-1,
+        train_sizes=np.linspace(0.1, 1.0, 5)
+    )
+    train_mean = train_scores.mean(axis=1)
+    train_std = train_scores.std(axis=1)
+    val_mean = val_scores.mean(axis=1)
+    val_std = val_scores.std(axis=1)
+    import matplotlib.pyplot as plt
+    fig1, ax1 = plt.subplots(figsize=(6, 4))
+    ax1.plot(train_sizes, train_mean, 'o-', label='Training score')
+    ax1.fill_between(train_sizes, train_mean - train_std, train_mean + train_std, alpha=0.2)
+    ax1.plot(train_sizes, val_mean, 'o-', label='Validation score')
+    ax1.fill_between(train_sizes, val_mean - val_std, val_mean + val_std, alpha=0.2)
+    ax1.set_xlabel('Training examples')
+    ax1.set_ylabel('Accuracy')
+    ax1.set_title('Learning Curve')
+    ax1.legend(loc='best')
+    ax1.grid(True, alpha=0.3)
+    st.pyplot(fig1)
+    plt.close(fig1)
+    
+    # ROC curve (prediction curve)
+    st.subheader("📉 ROC Curve")
+    if hasattr(model, 'predict_proba'):
+        y_proba = model.predict_proba(X_test_split)[:, 1]
+        fpr, tpr, _ = roc_curve(y_test, y_proba)
+        roc_auc = auc(fpr, tpr)
+        fig2, ax2 = plt.subplots(figsize=(6, 4))
+        ax2.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.3f})')
+        ax2.plot([0, 1], [0, 1], color='navy', lw=1, linestyle='--')
+        ax2.set_xlim([0.0, 1.0])
+        ax2.set_ylim([0.0, 1.05])
+        ax2.set_xlabel('False Positive Rate')
+        ax2.set_ylabel('True Positive Rate')
+        ax2.set_title('Receiver Operating Characteristic')
+        ax2.legend(loc='lower right')
+        ax2.grid(True, alpha=0.3)
+        st.pyplot(fig2)
+        plt.close(fig2)
+    
     st.subheader("🔍 Feature Importance")
     for feature, importance in zip(feature_columns, model.feature_importances_):
         st.write(f"{feature}: {importance:.3f}")
@@ -135,12 +185,14 @@ def save_model(model, label_encoders):
     try:
         import os
         os.makedirs('models', exist_ok=True)
-        joblib.dump(model, 'models/success_model.pkl')
-        joblib.dump(label_encoders, 'models/label_encoders.pkl')
+        model_path = 'models/success_model.pkl'
+        enc_path = 'models/label_encoders.pkl'
+        joblib.dump(model, model_path)
+        joblib.dump(label_encoders, enc_path)
         st.success("✅ Model saved successfully!")
         st.write("📁 Saved files:")
-        st.write("- models/success_model.pkl")
-        st.write("- models/label_encoders.pkl")
+        st.write(f"- {os.path.abspath(model_path)}")
+        st.write(f"- {os.path.abspath(enc_path)}")
     except Exception as e:
         st.error(f"❌ Error saving model: {str(e)}")
 
@@ -183,6 +235,12 @@ def main():
             model = train_model(X, y)
             st.session_state['trained_model'] = (model, encoders)
             st.success("✅ Success model training completed!")
+    
+    # Quick-save button right after training section
+    if 'trained_model' in st.session_state:
+        if st.button("💾 Save Trained Model Now", type="secondary"):
+            model, label_encoders = st.session_state['trained_model']
+            save_model(model, label_encoders)
     
     # Step 4: Save Model
     if 'trained_model' in st.session_state:
