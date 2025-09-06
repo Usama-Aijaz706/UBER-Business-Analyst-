@@ -94,7 +94,7 @@ def prepare_features(df):
     
     return X, y, label_encoders
 
-def train_model(X, y):
+def train_model(X, y, encoders):
     """Train a single RandomForest classifier to predict ride success"""
     
     st.subheader("🤖 Training Success Classification Model")
@@ -178,6 +178,10 @@ def train_model(X, y):
     for feature, importance in zip(feature_columns, model.feature_importances_):
         st.write(f"{feature}: {importance:.3f}")
     
+    st.markdown("---")
+    if st.button("💾 Save Trained Model Now", type="primary"):
+        save_model(model, encoders)
+    
     return model
 
 def save_model(model, label_encoders):
@@ -232,15 +236,9 @@ def main():
         st.subheader("🎯 Step 3: Train Success Model")
         if st.button("🚀 Train Success Model", type="primary"):
             X, y, encoders = st.session_state['features']
-            model = train_model(X, y)
+            model = train_model(X, y, encoders)
             st.session_state['trained_model'] = (model, encoders)
             st.success("✅ Success model training completed!")
-    
-    # Quick-save button right after training section
-    if 'trained_model' in st.session_state:
-        if st.button("💾 Save Trained Model Now", type="secondary"):
-            model, label_encoders = st.session_state['trained_model']
-            save_model(model, label_encoders)
     
     # Step 4: Save Model
     if 'trained_model' in st.session_state:
