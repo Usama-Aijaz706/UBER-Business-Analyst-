@@ -5,12 +5,17 @@ This script processes the Uber rides data and trains ML models for booking predi
 
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, learning_curve, validation_curve
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, accuracy_score, classification_report
 import joblib
 import streamlit as st
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')
@@ -261,6 +266,219 @@ def train_models(X, y_booking_count, y_revenue, y_success_rate, label_encoders):
     
     return booking_model, revenue_model, success_model, label_encoders
 
+def plot_training_curves(booking_model, revenue_model, success_model, X_train, y_booking_train, y_revenue_train, y_success_train):
+    """Plot training curves and validation curves for all models"""
+    
+    st.subheader("📊 Training Curves & Model Performance")
+    
+    # Create a figure with subplots
+    fig = make_subplots(
+        rows=3, cols=2,
+        subplot_titles=('Booking Count - Learning Curve', 'Booking Count - Validation Curve',
+                       'Revenue - Learning Curve', 'Revenue - Validation Curve', 
+                       'Success Rate - Learning Curve', 'Success Rate - Validation Curve'),
+        specs=[[{"secondary_y": False}, {"secondary_y": False}],
+               [{"secondary_y": False}, {"secondary_y": False}],
+               [{"secondary_y": False}, {"secondary_y": False}]]
+    )
+    
+    # 1. Booking Count Model Learning Curve
+    train_sizes, train_scores, val_scores = learning_curve(
+        booking_model, X_train, y_booking_train, cv=5, n_jobs=-1,
+        train_sizes=np.linspace(0.1, 1.0, 10), scoring='neg_mean_absolute_error'
+    )
+    
+    train_mean = -np.mean(train_scores, axis=1)
+    train_std = np.std(train_scores, axis=1)
+    val_mean = -np.mean(val_scores, axis=1)
+    val_std = np.std(val_scores, axis=1)
+    
+    fig.add_trace(
+        go.Scatter(x=train_sizes, y=train_mean, name='Training MAE', 
+                  line=dict(color='blue'), mode='lines+markers'),
+        row=1, col=1
+    )
+    fig.add_trace(
+        go.Scatter(x=train_sizes, y=val_mean, name='Validation MAE', 
+                  line=dict(color='red'), mode='lines+markers'),
+        row=1, col=1
+    )
+    
+    # 2. Revenue Model Learning Curve
+    train_sizes, train_scores, val_scores = learning_curve(
+        revenue_model, X_train, y_revenue_train, cv=5, n_jobs=-1,
+        train_sizes=np.linspace(0.1, 1.0, 10), scoring='neg_mean_absolute_error'
+    )
+    
+    train_mean = -np.mean(train_scores, axis=1)
+    val_mean = -np.mean(val_scores, axis=1)
+    
+    fig.add_trace(
+        go.Scatter(x=train_sizes, y=train_mean, name='Training MAE', 
+                  line=dict(color='blue'), mode='lines+markers', showlegend=False),
+        row=2, col=1
+    )
+    fig.add_trace(
+        go.Scatter(x=train_sizes, y=val_mean, name='Validation MAE', 
+                  line=dict(color='red'), mode='lines+markers', showlegend=False),
+        row=2, col=1
+    )
+    
+    # 3. Success Rate Model Learning Curve
+    train_sizes, train_scores, val_scores = learning_curve(
+        success_model, X_train, y_success_train, cv=5, n_jobs=-1,
+        train_sizes=np.linspace(0.1, 1.0, 10), scoring='accuracy'
+    )
+    
+    train_mean = np.mean(train_scores, axis=1)
+    val_mean = np.mean(val_scores, axis=1)
+    
+    fig.add_trace(
+        go.Scatter(x=train_sizes, y=train_mean, name='Training Accuracy', 
+                  line=dict(color='blue'), mode='lines+markers', showlegend=False),
+        row=3, col=1
+    )
+    fig.add_trace(
+        go.Scatter(x=train_sizes, y=val_mean, name='Validation Accuracy', 
+                  line=dict(color='red'), mode='lines+markers', showlegend=False),
+        row=3, col=1
+    )
+    
+    # Update layout
+    fig.update_layout(
+        height=1200,
+        title_text="Model Training Curves",
+        title_x=0.5,
+        showlegend=True
+    )
+    
+    # Update x and y axis labels
+    for i in range(1, 4):
+        fig.update_xaxes(title_text="Training Set Size", row=i, col=1)
+        if i == 3:
+            fig.update_yaxes(title_text="Accuracy", row=i, col=1)
+        else:
+            fig.update_yaxes(title_text="Mean Absolute Error", row=i, col=1)
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    return fig
+
+def plot_model_predictions(booking_model, revenue_model, success_model, X_test, y_booking_test, y_revenue_test, y_success_test):
+    """Plot actual vs predicted values for all models"""
+    
+    st.subheader("🎯 Model Predictions vs Actual Values")
+    
+    # Get predictions
+    booking_pred = booking_model.predict(X_test)
+    revenue_pred = revenue_model.predict(X_test)
+    success_pred = success_model.predict(X_test)
+    
+    # Create subplots
+    fig = make_subplots(
+        rows=2, cols=2,
+        subplot_titles=('Booking Count: Actual vs Predicted', 'Revenue: Actual vs Predicted',
+                       'Success Rate: Actual vs Predicted', 'Model Performance Summary'),
+        specs=[[{"secondary_y": False}, {"secondary_y": False}],
+               [{"secondary_y": False}, {"secondary_y": False}]]
+    )
+    
+    # 1. Booking Count Scatter Plot
+    fig.add_trace(
+        go.Scatter(x=y_booking_test, y=booking_pred, mode='markers', 
+                  name='Booking Count', marker=dict(color='blue', opacity=0.6)),
+        row=1, col=1
+    )
+    
+    # Add perfect prediction line
+    max_val = max(y_booking_test.max(), booking_pred.max())
+    fig.add_trace(
+        go.Scatter(x=[0, max_val], y=[0, max_val], mode='lines', 
+                  name='Perfect Prediction', line=dict(color='red', dash='dash')),
+        row=1, col=1
+    )
+    
+    # 2. Revenue Scatter Plot
+    fig.add_trace(
+        go.Scatter(x=y_revenue_test, y=revenue_pred, mode='markers', 
+                  name='Revenue', marker=dict(color='green', opacity=0.6)),
+        row=1, col=2
+    )
+    
+    # Add perfect prediction line
+    max_val = max(y_revenue_test.max(), revenue_pred.max())
+    fig.add_trace(
+        go.Scatter(x=[0, max_val], y=[0, max_val], mode='lines', 
+                  name='Perfect Prediction', line=dict(color='red', dash='dash'), showlegend=False),
+        row=1, col=2
+    )
+    
+    # 3. Success Rate Scatter Plot
+    fig.add_trace(
+        go.Scatter(x=y_success_test, y=success_pred, mode='markers', 
+                  name='Success Rate', marker=dict(color='orange', opacity=0.6)),
+        row=2, col=1
+    )
+    
+    # Add perfect prediction line
+    max_val = max(y_success_test.max(), success_pred.max())
+    fig.add_trace(
+        go.Scatter(x=[0, max_val], y=[0, max_val], mode='lines', 
+                  name='Perfect Prediction', line=dict(color='red', dash='dash'), showlegend=False),
+        row=2, col=1
+    )
+    
+    # 4. Performance Summary Bar Chart
+    booking_r2 = r2_score(y_booking_test, booking_pred)
+    revenue_r2 = r2_score(y_revenue_test, revenue_pred)
+    success_accuracy = accuracy_score(y_success_test, success_pred)
+    
+    models = ['Booking Count', 'Revenue', 'Success Rate']
+    scores = [booking_r2, revenue_r2, success_accuracy]
+    
+    fig.add_trace(
+        go.Bar(x=models, y=scores, name='Model Performance', 
+               marker=dict(color=['blue', 'green', 'orange'])),
+        row=2, col=2
+    )
+    
+    # Update layout
+    fig.update_layout(
+        height=800,
+        title_text="Model Predictions Analysis",
+        title_x=0.5,
+        showlegend=True
+    )
+    
+    # Update axis labels
+    fig.update_xaxes(title_text="Actual Values", row=1, col=1)
+    fig.update_yaxes(title_text="Predicted Values", row=1, col=1)
+    fig.update_xaxes(title_text="Actual Values", row=1, col=2)
+    fig.update_yaxes(title_text="Predicted Values", row=1, col=2)
+    fig.update_xaxes(title_text="Actual Values", row=2, col=1)
+    fig.update_yaxes(title_text="Predicted Values", row=2, col=1)
+    fig.update_xaxes(title_text="Models", row=2, col=2)
+    fig.update_yaxes(title_text="Performance Score", row=2, col=2)
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Display performance metrics
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Booking Count R²", f"{booking_r2:.3f}")
+        st.metric("Booking Count MAE", f"{mean_absolute_error(y_booking_test, booking_pred):.2f}")
+    
+    with col2:
+        st.metric("Revenue R²", f"{revenue_r2:.3f}")
+        st.metric("Revenue MAE", f"₹{mean_absolute_error(y_revenue_test, revenue_pred):.2f}")
+    
+    with col3:
+        st.metric("Success Rate Accuracy", f"{success_accuracy:.3f}")
+        st.metric("Success Rate MAE", f"{mean_absolute_error(y_success_test, success_pred):.3f}")
+    
+    return fig
+
 def save_models(booking_model, revenue_model, success_model, label_encoders):
     """Save trained models and encoders"""
     
@@ -326,11 +544,134 @@ def main():
                     X, y_booking, y_revenue, y_success, encoders
                 )
                 st.session_state['trained_models'] = (booking_model, revenue_model, success_model, label_encoders)
+                st.session_state['training_completed'] = True
                 st.success("✅ Model training completed!")
     
-    # Step 4: Save Models
-    if 'trained_models' in st.session_state:
-        st.subheader("💾 Step 4: Save Models")
+    # Step 4: Plot Training Curves and Model Predictions
+    if 'trained_models' in st.session_state and 'training_completed' in st.session_state:
+        st.subheader("📊 Step 4: Training Curves & Model Analysis")
+        
+        if st.button("📈 Generate Training Curves & Predictions", type="primary"):
+            with st.spinner("Generating training curves and model predictions..."):
+                booking_model, revenue_model, success_model, label_encoders = st.session_state['trained_models']
+                
+                # Get the training data for plotting
+                X, y_booking, y_revenue, y_success, encoders = st.session_state['features']
+                feature_columns = ['Hour', 'DayOfWeek', 'Month', 'IsWeekend', 'Pickup Location', 'Vehicle Type', 'TimeCategory']
+                X_train = X[feature_columns].copy()
+                
+                # Prepare targets for plotting (same logic as in train_models)
+                df = st.session_state['processed_data']
+                y_booking_count = []
+                y_revenue = []
+                y_success = []
+                
+                for _, row in X_train.iterrows():
+                    location = label_encoders['Pickup Location'].inverse_transform([row['Pickup Location']])[0]
+                    vehicle = label_encoders['Vehicle Type'].inverse_transform([row['Vehicle Type']])[0]
+                    time_cat = label_encoders['TimeCategory'].inverse_transform([row['TimeCategory']])[0]
+                    hour = row['Hour']
+                    
+                    matching_records = df[
+                        (df['Pickup Location'] == location) &
+                        (df['Vehicle Type'] == vehicle) &
+                        (df['TimeCategory'] == time_cat) &
+                        (df['Hour'] == hour)
+                    ]
+                    
+                    if len(matching_records) > 0:
+                        y_booking_count.append(len(matching_records))
+                        y_revenue.append(matching_records['Booking Value'].mean())
+                        y_success.append(matching_records['IsSuccessful'].mean())
+                    else:
+                        y_booking_count.append(1)
+                        y_revenue.append(df['Booking Value'].mean())
+                        y_success.append(df['IsSuccessful'].mean())
+                
+                y_booking_count = np.array(y_booking_count)
+                y_revenue = np.array(y_revenue)
+                y_success = np.array(y_success)
+                
+                # Split data for plotting
+                X_train_split, X_test_split, y_booking_train, y_booking_test = train_test_split(
+                    X_train, y_booking_count, test_size=0.2, random_state=42
+                )
+                _, _, y_revenue_train, y_revenue_test = train_test_split(
+                    X_train, y_revenue, test_size=0.2, random_state=42
+                )
+                _, _, y_success_train, y_success_test = train_test_split(
+                    X_train, y_success, test_size=0.2, random_state=42
+                )
+                
+                # Plot training curves
+                plot_training_curves(booking_model, revenue_model, success_model, 
+                                   X_train_split, y_booking_train, y_revenue_train, y_success_train)
+                
+                # Plot model predictions
+                plot_model_predictions(booking_model, revenue_model, success_model, 
+                                     X_test_split, y_booking_test, y_revenue_test, y_success_test)
+                
+                st.session_state['plots_generated'] = True
+                st.success("✅ Training curves and model predictions generated!")
+    
+    # Step 5: Save Models (Enhanced with better UI)
+    if 'trained_models' in st.session_state and 'plots_generated' in st.session_state:
+        st.subheader("💾 Step 5: Save Trained Models")
+        
+        # Enhanced save button with better styling and information
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 1.5rem; border-radius: 15px; margin: 1rem 0; 
+                    color: white; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+            <h3>🎉 Models Ready for Saving!</h3>
+            <p>Your models have been trained and analyzed. Click the button below to save them to disk.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns([1, 2, 1])
+        
+        with col2:
+            if st.button("💾 Save All Trained Models", type="primary", use_container_width=True):
+                with st.spinner("Saving models to disk..."):
+                    booking_model, revenue_model, success_model, label_encoders = st.session_state['trained_models']
+                    save_models(booking_model, revenue_model, success_model, label_encoders)
+                    
+                    # Show success message with file details
+                    st.success("🎉 Models saved successfully!")
+                    st.balloons()
+                    
+                    # Display saved files information
+                    st.info("""
+                    **Saved Files:**
+                    - `models/booking_count_model.pkl` - Booking count prediction model
+                    - `models/revenue_model.pkl` - Revenue prediction model  
+                    - `models/success_rate_model.pkl` - Success rate prediction model
+                    - `models/label_encoders.pkl` - Label encoders for categorical variables
+                    """)
+                    
+                    # Add download option for the models directory
+                    import os
+                    import zipfile
+                    import tempfile
+                    
+                    if os.path.exists('models'):
+                        with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tmp_file:
+                            with zipfile.ZipFile(tmp_file.name, 'w') as zip_file:
+                                for root, dirs, files in os.walk('models'):
+                                    for file in files:
+                                        zip_file.write(os.path.join(root, file), file)
+                            
+                            with open(tmp_file.name, 'rb') as f:
+                                st.download_button(
+                                    label="📥 Download Models as ZIP",
+                                    data=f.read(),
+                                    file_name="trained_models.zip",
+                                    mime="application/zip"
+                                )
+    
+    # Legacy save button for backward compatibility
+    elif 'trained_models' in st.session_state:
+        st.subheader("💾 Save Models")
         if st.button("💾 Save Trained Models", type="primary"):
             with st.spinner("Saving models..."):
                 booking_model, revenue_model, success_model, label_encoders = st.session_state['trained_models']
