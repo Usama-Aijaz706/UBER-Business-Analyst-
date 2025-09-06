@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚗 Uber Ride Analytics 2024</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .metric-card {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        .metric-card:hover::before {
+            left: 100%;
+        }
+        .chart-container {
+            transition: all 0.3s ease;
+        }
+        .chart-container:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.15);
+        }
+        .insight-box {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .insight-box:hover {
+            transform: translateX(5px);
+        }
+        .insight-box::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 20px 20px 0;
+            border-color: transparent #667eea transparent transparent;
+            transition: all 0.3s ease;
+        }
+        .insight-box:hover::after {
+            border-width: 0 25px 25px 0;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        .tab-item {
+            transition: all 0.3s ease;
+        }
+        .tab-item:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        .tab-item.active {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header Section -->
+    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-8 rounded-xl shadow-xl mb-8 text-white text-center animate-fadeInUp">
+        <h1 class="text-4xl font-bold mb-2">🚗 UBER RIDE ANALYTICS 2024</h1>
+        <h3 class="text-xl">Professional Business Intelligence Dashboard</h3>
+        <p class="opacity-80">Transform your ride data into actionable business insights</p>
+    </div>
+
+    <div class="container mx-auto px-4">
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Sidebar Filters -->
+            <div class="w-full lg:w-1/4">
+                <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 rounded-xl text-white mb-4">
+                    <h3 class="text-lg font-semibold text-center">🔍 FILTERS</h3>
+                </div>
+                
+                <!-- Date Range Filter -->
+                <div class="bg-white p-4 rounded-lg shadow mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">📅 Select Date Range:</label>
+                    <div class="flex gap-2">
+                        <input type="date" id="startDate" class="w-full p-2 border rounded">
+                        <input type="date" id="endDate" class="w-full p-2 border rounded">
+                    </div>
+                </div>
+                
+                <!-- Vehicle Type Filter -->
+                <div class="bg-white p-4 rounded-lg shadow mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">🚗 Select Vehicle Types:</label>
+                    <select id="vehicleTypes" class="w-full p-2 border rounded" multiple>
+                        <option value="Sedan" selected>Sedan</option>
+                        <option value="SUV" selected>SUV</option>
+                        <option value="Luxury" selected>Luxury</option>
+                        <option value="Pool" selected>Pool</option>
+                    </select>
+                </div>
+                
+                <!-- Time Category Filter -->
+                <div class="bg-white p-4 rounded-lg shadow mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">🕒 Select Time Categories:</label>
+                    <select id="timeCategories" class="w-full p-2 border rounded" multiple>
+                        <option value="Morning" selected>Morning</option>
+                        <option value="Afternoon" selected>Afternoon</option>
+                        <option value="Evening" selected>Evening</option>
+                        <option value="Night" selected>Night</option>
+                    </select>
+                </div>
+                
+                <!-- Payment Method Filter -->
+                <div class="bg-white p-4 rounded-lg shadow mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">💳 Select Payment Methods:</label>
+                    <select id="paymentMethods" class="w-full p-2 border rounded" multiple>
+                        <option value="Credit Card" selected>Credit Card</option>
+                        <option value="Debit Card" selected>Debit Card</option>
+                        <option value="UPI" selected>UPI</option>
+                        <option value="Cash" selected>Cash</option>
+                    </select>
+                </div>
+                
+                <!-- Filter Summary -->
+                <div class="bg-gradient-to-r from-blue-200 to-pink-200 p-4 rounded-xl shadow mb-4">
+                    <h4 class="font-semibold mb-2">📊 Filter Summary</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="bg-white p-2 rounded">
+                            <p class="text-xs text-gray-500">Filtered Records</p>
+                            <p class="font-bold" id="filteredRecords">0</p>
+                        </div>
+                        <div class="bg-white p-2 rounded">
+                            <p class="text-xs text-gray-500">Original Records</p>
+                            <p class="font-bold" id="totalRecords">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Download Section -->
+                <div class="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-xl shadow mb-4 text-white">
+                    <h4 class="font-semibold mb-2">💾 Download Data</h4>
+                    <button class="w-full bg-white text-green-600 py-2 px-4 rounded-lg font-medium mb-2 hover:bg-gray-100 transition">
+                        <i class="fas fa-download mr-2"></i>📥 Download CSV
+                    </button>
+                    <button class="w-full bg-white text-green-600 py-2 px-4 rounded-lg font-medium hover:bg-gray-100 transition">
+                        <i class="fas fa-file-alt mr-2"></i>📄 Download Report
+                    </button>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="bg-gradient-to-r from-purple-400 to-pink-500 p-4 rounded-xl shadow text-white">
+                    <h4 class="font-semibold mb-2">⚡ Quick Actions</h4>
+                    <button id="resetFilters" class="w-full bg-white text-purple-600 py-2 px-4 rounded-lg font-medium mb-2 hover:bg-gray-100 transition">
+                        <i class="fas fa-sync-alt mr-2"></i>🔄 Reset Filters
+                    </button>
+                    <button id="showSample" class="w-full bg-white text-purple-600 py-2 px-4 rounded-lg font-medium hover:bg-gray-100 transition">
+                        <i class="fas fa-table mr-2"></i>📊 Show Data Sample
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="w-full lg:w-3/4">
+                <!-- KPI Section -->
+                <div class="bg-gradient-to-r from-pink-400 to-red-500 p-4 rounded-xl shadow mb-6 text-white text-center animate-slideInLeft">
+                    <h2 class="text-xl font-semibold">📊 KEY PERFORMANCE INDICATORS</h2>
+                </div>
+                
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <!-- Total Bookings -->
+                    <div class="bg-gradient-to-br from-indigo-500 to-purple-600 p-6 rounded-xl text-white text-center metric-card">
+                        <div class="text-sm opacity-90 font-medium">Total Bookings</div>
+                        <div class="text-4xl font-bold my-2" id="totalBookings">0</div>
+                        <div class="text-sm opacity-90">Rides</div>
+                        <div class="text-xs mt-2">📈 All Time High</div>
+                    </div>
+                    
+                    <!-- Success Rate -->
+                    <div class="bg-gradient-to-br from-indigo-500 to-purple-600 p-6 rounded-xl text-white text-center metric-card">
+                        <div class="text-sm opacity-90 font-medium">Success Rate</div>
+                        <div class="text-4xl font-bold my-2" id="successRate">0%</div>
+                        <div class="text-sm opacity-90">Completed</div>
+                        <div class="text-xs mt-2 text-green-300" id="successDelta">📈 +0.0% vs Industry</div>
+                    </div>
+                    
+                    <!-- Total Revenue -->
+                    <div class="bg-gradient-to-br from-indigo-500 to-purple-600 p-6 rounded-xl text-white text-center metric-card">
+                        <div class="text-sm opacity-90 font-medium">Total Revenue</div>
+                        <div class="text-4xl font-bold my-2" id="totalRevenue">₹0</div>
+                        <div class="text-sm opacity-90">Generated</div>
+                        <div class="text-xs mt-2 text-green-300" id="revenueDelta">📈 ₹+0 vs Industry</div>
+                    </div>
+                    
+                    <!-- Customer Rating -->
+                    <div class="bg-gradient-to-br from-indigo-500 to-purple-600 p-6 rounded-xl text-white text-center metric-card">
+                        <div class="text-sm opacity-90 font-medium">Customer Rating</div>
+                        <div class="text-4xl font-bold my-2" id="avgRating">0.0/5</div>
+                        <div class="text-sm opacity-90">Satisfaction</div>
+                        <div class="text-xs mt-2 text-green-300" id="ratingDelta">📈 +0.0 vs Industry</div>
+                    </div>
+                </div>
+                
+                <!-- Additional Metrics -->
+                <div class="bg-gradient-to-r from-pink-400 to-red-500 p-3 rounded-xl shadow mb-6 text-white text-center">
+                    <h3 class="text-lg font-medium">📈 ADDITIONAL METRICS</h3>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <!-- Average Booking Value -->
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <div class="flex items-center">
+                            <div class="bg-blue-100 p-2 rounded-full mr-3">
+                                <i class="fas fa-rupee-sign text-blue-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">💰 Average Booking Value</p>
+                                <p class="font-bold" id="avgBookingValue">₹0</p>
+                                <p class="text-xs text-gray-500" id="avgBookingDelta">₹+0</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Average Ride Distance -->
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <div class="flex items-center">
+                            <div class="bg-green-100 p-2 rounded-full mr-3">
+                                <i class="fas fa-road text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">🛣️ Average Ride Distance</p>
+                                <p class="font-bold" id="avgRideDistance">0 km</p>
+                                <p class="text-xs text-gray-500" id="avgRideDelta">+0 km</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Unique Customers -->
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <div class="flex items-center">
+                            <div class="bg-purple-100 p-2 rounded-full mr-3">
+                                <i class="fas fa-users text-purple-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">👥 Unique Customers</p>
+                                <p class="font-bold" id="uniqueCustomers">0</p>
+                                <p class="text-xs text-gray-500" id="uniqueCustomersDelta">+0</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Cancellation Rate -->
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <div class="flex items-center">
+                            <div class="bg-red-100 p-2 rounded-full mr-3">
+                                <i class="fas fa-times text-red-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">❌ Cancellation Rate</p>
+                                <p class="font-bold" id="cancellationRate">0%</p>
+                                <p class="text-xs text-gray-500" id="cancellationDelta">+0%</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tabs Navigation -->
+                <div class="flex overflow-x-auto mb-6 bg-gray-100 p-2 rounded-lg gap-2">
+                    <button class="tab-item px-4 py-2 rounded-lg bg-white border-2 border-transparent active" data-tab="temporal">
+                        🕒 Temporal Analysis
+                    </button>
+                    <button class="tab-item px-4 py-2 rounded-lg bg-white border-2 border-transparent" data-tab="vehicle">
+                        🚗 Vehicle Analysis
+                    </button>
+                    <button class="tab-item px-4 py-2 rounded-lg bg-white border-2 border-transparent" data-tab="revenue">
+                        💰 Revenue Analysis
+                    </button>
+                    <button class="tab-item px-4 py-2 rounded-lg bg-white border-2 border-transparent" data-tab="cancellation">
+                        🚫 Cancellation Analysis
+                    </button>
+                    <button class="tab-item px-4 py-2 rounded-lg bg-white border-2 border-transparent" data-tab="customer">
+                        👥 Customer Insights
+                    </button>
+                    <button class="tab-item px-4 py-2 rounded-lg bg-white border-2 border-transparent" data-tab="geographic">
+                        📍 Geographic Analysis
+                    </button>
+                    <button class="tab-item px-4 py-2 rounded-lg bg-white border-2 border-transparent" data-tab="advanced">
+                        🔬 Advanced Analytics
+                    </button>
+                </div>
+                
+                <!-- Tab Content -->
+                <div id="tabContent">
+                    <!-- Temporal Analysis -->
+                    <div id="temporal" class="tab-panel active">
+                        <div class="bg-gradient-to-r from-pink-400 to-red-500 p-4 rounded-xl shadow mb-6 text-white text-center">
+                            <h2 class="text-xl font-semibold">🕒 TEMPORAL ANALYSIS</h2>
+                        </div>
+                        
+                        <!-- Time Metric Selector -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="bg-white p-4 rounded-lg shadow">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">📊 Select Metric to Analyze:</label>
+                                <select id="timeMetric" class="w-full p-2 border rounded">
+                                    <option value="bookings">Total Bookings</option>
+                                    <option value="success">Success Rate</option>
+                                    <option value="revenue">Average Revenue</option>
+                                    <option value="rating">Customer Rating</option>
+                                </select>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg shadow">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">🕒 Select Time Period:</label>
+                                <select id="timePeriod" class="w-full p-2 border rounded">
+                                    <option value="hourly">Hourly</option>
+                                    <option value="daily">Daily</option>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="weekly">Weekly</option>
+                                </select>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg shadow flex items-center">
+                                <input type="checkbox" id="showTrends" class="mr-2" checked>
+                                <label for="showTrends" class="text-sm font-medium text-gray-700">📈 Show Trend Lines</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Hourly and Daily Patterns -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <!-- Hourly Patterns -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="hourlyChart" style="height: 400px;"></div>
+                                <div class="grid grid-cols-2 gap-2 mt-4">
+                                    <div class="bg-green-100 p-3 rounded-lg">
+                                        <p class="text-sm text-green-800">🎯 Peak Hour:</p>
+                                        <p class="font-bold" id="peakHour">0:00 (0)</p>
+                                    </div>
+                                    <div class="bg-yellow-100 p-3 rounded-lg">
+                                        <p class="text-sm text-yellow-800">📉 Low Hour:</p>
+                                        <p class="font-bold" id="lowHour">0:00 (0)</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Daily Patterns -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="dailyChart" style="height: 400px;"></div>
+                                <div class="grid grid-cols-2 gap-2 mt-4">
+                                    <div class="bg-green-100 p-3 rounded-lg">
+                                        <p class="text-sm text-green-800">🏆 Best Day:</p>
+                                        <p class="font-bold" id="bestDay">Monday (0)</p>
+                                    </div>
+                                    <div class="bg-yellow-100 p-3 rounded-lg">
+                                        <p class="text-sm text-yellow-800">📉 Worst Day:</p>
+                                        <p class="font-bold" id="worstDay">Sunday (0)</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Monthly Trends -->
+                        <div class="bg-gradient-to-r from-blue-200 to-pink-200 p-6 rounded-xl shadow mb-6 insight-box">
+                            <h3 class="font-semibold mb-4">🎯 Filter for Monthly Trends Chart:</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">📊 Filter Type:</label>
+                                    <select id="monthlyFilterType" class="w-full p-2 border rounded">
+                                        <option value="overall">Overall</option>
+                                        <option value="days">Days</option>
+                                        <option value="time">Time</option>
+                                        <option value="monthly">Monthly</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2" id="monthlyFilterLabel">📅 Select Day:</label>
+                                    <select id="monthlyFilterValue" class="w-full p-2 border rounded">
+                                        <option value="Monday">Monday</option>
+                                        <option value="Tuesday">Tuesday</option>
+                                        <option value="Wednesday">Wednesday</option>
+                                        <option value="Thursday">Thursday</option>
+                                        <option value="Friday">Friday</option>
+                                        <option value="Saturday">Saturday</option>
+                                        <option value="Sunday">Sunday</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">📈 Select Metric:</label>
+                                    <select id="monthlyMetric" class="w-full p-2 border rounded">
+                                        <option value="all">All Metrics</option>
+                                        <option value="bookings">Bookings Only</option>
+                                        <option value="revenue">Revenue Only</option>
+                                        <option value="rating">Rating Only</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-end">
+                                    <button id="applyMonthlyFilter" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-indigo-700 transition">
+                                        <i class="fas fa-sync-alt mr-2"></i>🔄 Apply Filter
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Monthly Trends Chart -->
+                        <div class="bg-white p-4 rounded-lg shadow-xl mb-6 chart-container">
+                            <div id="monthlyTrendsChart" style="height: 500px;"></div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                                <div class="bg-green-100 p-3 rounded-lg">
+                                    <p class="text-sm text-green-800">📊 Peak Month:</p>
+                                    <p class="font-bold" id="peakMonth">January (0 bookings)</p>
+                                </div>
+                                <div class="bg-blue-100 p-3 rounded-lg">
+                                    <p class="text-sm text-blue-800">💰 Revenue Peak:</p>
+                                    <p class="font-bold" id="revenuePeakMonth">January (₹0K)</p>
+                                </div>
+                                <div class="bg-purple-100 p-3 rounded-lg">
+                                    <p class="text-sm text-purple-800">⭐ Rating Peak:</p>
+                                    <p class="font-bold" id="ratingPeakMonth">January (0.00)</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Enhanced Insights -->
+                        <div class="bg-gradient-to-r from-blue-200 to-pink-200 p-6 rounded-xl shadow insight-box">
+                            <h3 class="font-semibold mb-4">💡 Enhanced Temporal Insights:</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <h4 class="font-medium mb-2">🕒 Hourly Patterns:</h4>
+                                    <ul class="list-disc pl-5 text-sm">
+                                        <li class="mb-1"><span class="text-red-500">🔴 Peak Hours</span>: Focus resources during identified peak hours for optimal service</li>
+                                        <li class="mb-1"><span class="text-yellow-500">🟡 Low Hours</span>: Consider promotional activities during low-demand periods</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">📅 Daily Patterns:</h4>
+                                    <ul class="list-disc pl-5 text-sm">
+                                        <li class="mb-1"><span class="text-green-500">🟢 Best Days</span>: Understand weekly demand variations for staffing decisions</li>
+                                        <li class="mb-1"><span class="text-orange-500">🟠 Worst Days</span>: Implement strategies to boost performance on slower days</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">📈 Monthly Trends:</h4>
+                                    <ul class="list-disc pl-5 text-sm">
+                                        <li class="mb-1"><span class="text-blue-500">🔵 Seasonal Patterns</span>: Track monthly patterns for strategic planning and growth</li>
+                                        <li class="mb-1"><span class="text-purple-500">🟣 Revenue Cycles</span>: Identify high-revenue months for investment decisions</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">⏰ Minute Analysis:</h4>
+                                    <ul class="list-disc pl-5 text-sm">
+                                        <li class="mb-1"><span class="text-brown-500">🟤 Precision Timing</span>: Optimize operations at the minute level for maximum efficiency</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Vehicle Analysis -->
+                    <div id="vehicle" class="tab-panel hidden">
+                        <div class="bg-gradient-to-r from-pink-400 to-red-500 p-4 rounded-xl shadow mb-6 text-white text-center">
+                            <h2 class="text-xl font-semibold">🚗 VEHICLE PERFORMANCE ANALYSIS</h2>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <!-- Vehicle Distribution -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="vehicleDistributionChart" style="height: 400px;"></div>
+                            </div>
+                            
+                            <!-- Vehicle Success Rates -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="vehicleSuccessChart" style="height: 400px;"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Vehicle Revenue Analysis -->
+                        <div class="bg-white p-4 rounded-lg shadow-xl mb-6 chart-container">
+                            <div id="vehicleRevenueChart" style="height: 500px;"></div>
+                        </div>
+                        
+                        <!-- Vehicle Insights -->
+                        <div class="bg-gradient-to-r from-blue-200 to-pink-200 p-6 rounded-xl shadow insight-box">
+                            <h3 class="font-semibold mb-4">🚀 Vehicle Performance Insights:</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <h4 class="font-medium mb-2">📊 Popularity:</h4>
+                                    <p class="text-sm" id="mostPopularVehicle">Sedan is the most popular vehicle type with 35% of all bookings.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">✅ Success Rates:</h4>
+                                    <p class="text-sm" id="bestSuccessVehicle">Luxury vehicles have the highest success rate at 96%.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">💰 Revenue Generation:</h4>
+                                    <p class="text-sm" id="bestRevenueVehicle">SUVs generate the highest average revenue per booking at ₹450.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">⭐ Customer Satisfaction:</h4>
+                                    <p class="text-sm" id="bestRatingVehicle">Luxury vehicles receive the highest customer ratings at 4.8/5.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Revenue Analysis -->
+                    <div id="revenue" class="tab-panel hidden">
+                        <div class="bg-gradient-to-r from-pink-400 to-red-500 p-4 rounded-xl shadow mb-6 text-white text-center">
+                            <h2 class="text-xl font-semibold">💰 REVENUE ANALYSIS</h2>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <!-- Revenue Distribution -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="revenueDistributionChart" style="height: 400px;"></div>
+                            </div>
+                            
+                            <!-- Revenue by Time Category -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="revenueTimeChart" style="height: 400px;"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Daily Revenue Trends -->
+                        <div class="bg-white p-4 rounded-lg shadow-xl mb-6 chart-container">
+                            <div id="dailyRevenueChart" style="height: 500px;"></div>
+                        </div>
+                        
+                        <!-- Revenue Insights -->
+                        <div class="bg-gradient-to-r from-blue-200 to-pink-200 p-6 rounded-xl shadow insight-box">
+                            <h3 class="font-semibold mb-4">💰 Revenue Optimization Insights:</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <h4 class="font-medium mb-2">📊 Revenue Patterns:</h4>
+                                    <p class="text-sm" id="revenuePattern">Evening hours generate 45% of total revenue despite only 30% of bookings.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">🕒 Time-Based Pricing:</h4>
+                                    <p class="text-sm" id="timePricing">Consider surge pricing during peak revenue hours (6-9 PM).</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">🚗 Vehicle Mix:</h4>
+                                    <p class="text-sm" id="vehicleMix">SUVs and Luxury vehicles contribute 65% of total revenue.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">📅 Seasonal Trends:</h4>
+                                    <p class="text-sm" id="seasonalTrend">December shows a 25% revenue increase compared to average months.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Cancellation Analysis -->
+                    <div id="cancellation" class="tab-panel hidden">
+                        <div class="bg-gradient-to-r from-pink-400 to-red-500 p-4 rounded-xl shadow mb-6 text-white text-center">
+                            <h2 class="text-xl font-semibold">🚫 CANCELLATION ANALYSIS</h2>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <!-- Cancellation Reasons -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="cancellationReasonsChart" style="height: 400px;"></div>
+                            </div>
+                            
+                            <!-- Cancellation by Vehicle -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="cancellationVehicleChart" style="height: 400px;"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Lost Revenue Analysis -->
+                        <div class="bg-white p-4 rounded-lg shadow-xl mb-6 chart-container">
+                            <div id="lostRevenueChart" style="height: 500px;"></div>
+                        </div>
+                        
+                        <!-- Cancellation Insights -->
+                        <div class="bg-gradient-to-r from-blue-200 to-pink-200 p-6 rounded-xl shadow insight-box">
+                            <h3 class="font-semibold mb-4">⚠️ Cancellation Reduction Strategies:</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <h4 class="font-medium mb-2">🚗 Vehicle-Specific Issues:</h4>
+                                    <p class="text-sm" id="vehicleCancellation">Pool rides have the highest cancellation rate at 12%.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">🕒 Time-Based Patterns:</h4>
+                                    <p class="text-sm" id="timeCancellation">Morning hours (7-9 AM) see 40% higher cancellation rates.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">💸 Financial Impact:</h4>
+                                    <p class="text-sm" id="financialImpact">Cancellations result in ₹1.2M lost revenue monthly.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">🎯 Targeted Solutions:</h4>
+                                    <p class="text-sm" id="targetedSolutions">Implement cancellation fees during peak hours to reduce no-shows.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Customer Insights -->
+                    <div id="customer" class="tab-panel hidden">
+                        <div class="bg-gradient-to-r from-pink-400 to-red-500 p-4 rounded-xl shadow mb-6 text-white text-center">
+                            <h2 class="text-xl font-semibold">👥 CUSTOMER INSIGHTS</h2>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <!-- Customer Ratings -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="customerRatingsChart" style="height: 400px;"></div>
+                            </div>
+                            
+                            <!-- Driver vs Customer Ratings -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="driverCustomerChart" style="height: 400px;"></div>
+                                <div class="mt-4 p-3 rounded-lg" id="correlationInsight">
+                                    <p class="text-sm">🔗 <span class="font-medium">Correlation Analysis:</span> Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Customer Satisfaction Trends -->
+                        <div class="bg-white p-4 rounded-lg shadow-xl mb-6 chart-container">
+                            <div id="customerTrendsChart" style="height: 500px;"></div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                                <div class="bg-white p-3 rounded-lg border">
+                                    <p class="text-sm text-gray-500">📊 Overall Average Rating</p>
+                                    <p class="font-bold" id="overallRating">0.00/5</p>
+                                    <p class="text-xs text-gray-500" id="overallRatingDelta">+0.00</p>
+                                </div>
+                                <div class="bg-green-100 p-3 rounded-lg">
+                                    <p class="text-sm text-green-800">🏆 Best Day</p>
+                                    <p class="font-bold" id="bestRatingDay">2023-01-01 (0.00)</p>
+                                </div>
+                                <div class="bg-yellow-100 p-3 rounded-lg">
+                                    <p class="text-sm text-yellow-800">📉 Worst Day</p>
+                                    <p class="font-bold" id="worstRatingDay">2023-01-01 (0.00)</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Customer Insights -->
+                        <div class="bg-gradient-to-r from-blue-200 to-pink-200 p-6 rounded-xl shadow insight-box">
+                            <h3 class="font-semibold mb-4">👤 Customer Experience Insights:</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <h4 class="font-medium mb-2">⭐ Rating Patterns:</h4>
+                                    <p class="text-sm" id="ratingPattern">Most customers rate 4-5 stars, with only 8% rating below 3 stars.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">👨‍💼 Driver Impact:</h4>
+                                    <p class="text-sm" id="driverImpact">Higher driver ratings correlate with better customer ratings (r=0.62).</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">📅 Trend Analysis:</h4>
+                                    <p class="text-sm" id="customerTrend">Customer satisfaction has improved by 0.3 points over the last 6 months.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">🚗 Vehicle Preferences:</h4>
+                                    <p class="text-sm" id="vehiclePreference">Luxury vehicles receive consistently higher ratings (avg 4.8/5).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Geographic Analysis -->
+                    <div id="geographic" class="tab-panel hidden">
+                        <div class="bg-gradient-to-r from-pink-400 to-red-500 p-4 rounded-xl shadow mb-6 text-white text-center">
+                            <h2 class="text-xl font-semibold">📍 GEOGRAPHIC ANALYSIS</h2>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <!-- Top Pickup Locations -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="pickupLocationsChart" style="height: 400px;"></div>
+                            </div>
+                            
+                            <!-- Top Drop Locations -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="dropLocationsChart" style="height: 400px;"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Location Performance -->
+                        <div class="bg-white p-4 rounded-lg shadow-xl mb-6 chart-container">
+                            <div id="locationPerformanceChart" style="height: 500px;"></div>
+                        </div>
+                        
+                        <!-- Geographic Insights -->
+                        <div class="bg-gradient-to-r from-blue-200 to-pink-200 p-6 rounded-xl shadow insight-box">
+                            <h3 class="font-semibold mb-4">🌍 Geographic Insights:</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <h4 class="font-medium mb-2">📍 Hotspots:</h4>
+                                    <p class="text-sm" id="hotspots">Downtown area accounts for 35% of all pickups and 28% of drop-offs.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">✅ Success Rates:</h4>
+                                    <p class="text-sm" id="locationSuccess">Airport pickups have the highest success rate at 98%.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">💰 Revenue Density:</h4>
+                                    <p class="text-sm" id="revenueDensity">Business district generates ₹2.5M monthly revenue.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2">🎯 Expansion Areas:</h4>
+                                    <p class="text-sm" id="expansionAreas">Suburban areas show 15% MoM growth in ride demand.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Advanced Analytics -->
+                    <div id="advanced" class="tab-panel hidden">
+                        <div class="bg-gradient-to-r from-pink-400 to-red-500 p-4 rounded-xl shadow mb-6 text-white text-center">
+                            <h2 class="text-xl font-semibold">🔬 ADVANCED ANALYTICS</h2>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <!-- Correlation Matrix -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="correlationChart" style="height: 400px;"></div>
+                            </div>
+                            
+                            <!-- Revenue Categories -->
+                            <div class="bg-white p-4 rounded-lg shadow-xl chart-container">
+                                <div id="revenueCategoriesChart" style="height: 400px;"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Time Series Analysis -->
+                        <div class="bg-white p-4 rounded-lg shadow-xl mb-6 chart-container">
+                            <div id="timeSeriesChart" style="height: 500px;"></div>
+                        </div>
+                        
+                        <!-- Business Recommendations -->
+                        <div class="bg-gradient-to-r from-blue-200 to-pink-200 p-6 rounded-xl shadow insight-box">
+                            <h3 class="font-semibold mb-4">🚀 Strategic Recommendations:</h3>
+                            <ol class="list-decimal pl-5 space-y-3">
+                                <li class="font-medium">Peak Hour Optimization: Focus resources during identified peak hours</li>
+                                <li class="font-medium">Vehicle Allocation: Optimize fleet distribution based on demand patterns</li>
+                                <li class="font-medium">Pricing Strategy: Implement dynamic pricing during high-demand periods</li>
+                                <li class="font-medium">Customer Experience: Address factors affecting customer ratings</li>
+                                <li class="font-medium">Operational Efficiency: Reduce cancellation rates through targeted improvements</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Performance Monitoring -->
+                <div class="bg-gradient-to-r from-pink-400 to-red-500 p-4 rounded-xl shadow my-6 text-white text-center">
+                    <h2 class="text-xl font-semibold">📊 PERFORMANCE MONITORING</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <!-- Real-Time Performance -->
+                    <div class="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-xl shadow text-white">
+                        <h4 class="font-semibold mb-4 text-center">⚡ Real-Time Performance</h4>
+                        <div class="bg-white p-4 rounded-lg text-gray-800 mb-3">
+                            <p class="text-sm">Current Success Rate</p>
+                            <p class="text-2xl font-bold" id="currentSuccessRate">0.0%</p>
+                            <p class="text-xs" id="successRateDelta">+0.0%</p>
+                        </div>
+                        <div class="bg-white bg-opacity-20 p-2 rounded-lg text-sm" id="successRateStatus">
+                            ⚠️ Below target of 95.0%
+                        </div>
+                    </div>
+                    
+                    <!-- Efficiency Metrics -->
+                    <div class="bg-gradient-to-r from-purple-400 to-pink-500 p-4 rounded-xl shadow text-white">
+                        <h4 class="font-semibold mb-4 text-center">🎯 Efficiency Metrics</h4>
+                        <div class="bg-white p-3 rounded-lg text-gray-800 mb-2">
+                            <p class="text-sm">Avg VTAT</p>
+                            <p class="text-xl font-bold" id="avgVTAT">0.0 min</p>
+                            <p class="text-xs" id="avgVTATDelta">+0.0 min</p>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg text-gray-800">
+                            <p class="text-sm">Avg CTAT</p>
+                            <p class="text-xl font-bold" id="avgCTAT">0.0 min</p>
+                            <p class="text-xs" id="avgCTATDelta">+0.0 min</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Customer Satisfaction -->
+                    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 rounded-xl shadow text-white">
+                        <h4 class="font-semibold mb-4 text-center">⭐ Customer Satisfaction</h4>
+                        <div class="bg-white p-3 rounded-lg text-gray-800 mb-2">
+                            <p class="text-sm">Customer Rating</p>
+                            <p class="text-xl font-bold" id="currentCustomerRating">0.0/5</p>
+                            <p class="text-xs" id="customerRatingDelta">+0.0</p>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg text-gray-800">
+                            <p class="text-sm">Driver Rating</p>
+                            <p class="text-xl font-bold" id="currentDriverRating">0.0/5</p>
+                            <p class="text-xs" id="driverRatingDelta">+0.0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="text-center p-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow text-white mb-8">
+                    <h3 class="text-xl font-semibold mb-2">🚗 Uber Ride Analytics 2024 Dashboard</h3>
+                    <p>Built with ❤️ using HTML/CSS/JS | Professional Business Intelligence Solution</p>
+                    <p class="mt-4 opacity-80">Last Updated: <span id="lastUpdated">Loading...</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data for demonstration
+        const sampleData = {
+            totalRecords: 185432,
+            filteredRecords: 185432,
+            metrics: {
+                totalBookings: 185432,
+                successRate: 92.5,
+                totalRevenue: 78245600,
+                avgRating: 4.6,
+                avgBookingValue: 422,
+                avgRideDistance: 18.2,
+                uniqueCustomers: 145678,
+                cancellationRate: 7.5,
+                currentSuccessRate: 92.5,
+                avgVTAT: 7.8,
+                avgCTAT: 22.4,
+                currentCustomerRating: 4.6,
+                currentDriverRating: 4.5
+            },
+            deltas: {
+                success: 0.5,
+                revenue: 72,
+                rating: 0.4,
+                bookingValue: 22,
+                rideDistance: -1.8,
+                uniqueCustomers: 5678,
+                cancellation: -0.5,
+                successRate: -2.5,
+                vtat: -0.2,
+                ctat: -2.6,
+                customerRating: 0.1,
+                driverRating: 0.2
+            },
+            hourlyData: {
+                hours: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23],
+                bookings: [1200,800,600,400,300,500,2500,4500,5200,4800,4200,3800,3500,3200,3000,3200,3800,4500,5200,5800,5400,4800,3800,2500],
+                success: [0.88,0.85,0.82,0.80,0.78,0.82,0.90,0.93,0.94,0.93,0.92,0.91,0.90,0.89,0.88,0.89,0.91,0.93,0.95,0.96,0.95,0.94,0.92,0.90],
+                revenue: [350,320,300,280,260,300,380,420,450,440,430,420,410,400,390,410,430,450,480,500,490,470,430,380],
+                rating: [4.2,4.1,4.0,3.9,3.8,4.0,4.3,4.5,4.6,4.5,4.4,4.3,4.2,4.1,4.0,4.1,4.3,4.5,4.7,4.8,4.7,4.6,4.4,4.3]
+            },
+            dailyData: {
+                days: ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],
+                bookings: [25000,26000,27000,28000,30000,32000,28000],
+                success: [0.91,0.92,0.93,0.94,0.95,0.94,0.90],
+                revenue: [400,410,420,430,450,440,390],
+                rating: [4.4,4.5,4.5,4.6,4.7,4.6,4.3]
+            },
+            monthlyData: {
+                months: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+                bookings: [14000,13500,15000,15500,16000,16500,17000,17500,18000,18500,19000,21000],
+                revenue: [5800,5600,6200,6400,6600,6800,7000,7200,7400,7600,7800,8500],
+                rating: [4.5,4.4,4.5,4.5,4.6,4.6,4.7,4.7,4.8,4.8,4.9,4.9]
+            },
+            vehicleData: {
+                types: ['Sedan','SUV','Luxury','Pool'],
+                distribution: [45,30,15,10],
+                success: [0.93,0.94,0.96,0.88],
+                revenue: [380,450,600,300],
+                rating: [4.5,4.6,4.8,4.2]
+            },
+            cancellationData: {
+                reasons: ['Driver Cancelled','Customer Cancelled','No Show','Vehicle Issue','Other'],
+                counts: [45,30,15,8,2],
+                byVehicle: [5,4,3,15]
+            },
+            locationData: {
+                pickup: ['Downtown','Airport','Business District','Suburb A','Suburb B','Train Station','Mall','University','Hospital','Hotel District'],
+                pickupCounts: [65000,32000,28000,15000,12000,10000,8000,7500,7000,6500],
+                drop: ['Downtown','Airport','Business District','Suburb A','Suburb B','Train Station','Mall','University','Hospital','Hotel District'],
+                dropCounts: [60000,35000,25000,14000,11000,9500,8500,8000,7500,7000],
+                performance: ['Airport','Hotel District','Business District','Downtown','University','Hospital','Mall','Train Station','Suburb A','Suburb B'],
+                performanceSuccess: [98,97,96,95,94,93,92,91,90,89]
+            },
+            correlationData: {
+                labels: ['Avg VTAT','Avg CTAT','Booking Value','Ride Distance','Driver Ratings','Customer Rating'],
+                values: [
+                    [1.0, 0.6, -0.1, 0.2, 0.3, 0.4],
+                    [0.6, 1.0, -0.2, 0.1, 0.2, 0.3],
+                    [-0.1, -0.2, 1.0, 0.7, 0.5, 0.6],
+                    [0.2, 0.1, 0.7, 1.0, 0.4, 0.5],
+                    [0.3, 0.2, 0.5, 0.4, 1.0, 0.8],
+                    [0.4, 0.3, 0.6, 0.5, 0.8, 1.0]
+                ]
+            }
+        };
+
+        // Initialize the dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set last updated timestamp
+            const now = new Date();
+            document.getElementById('lastUpdated').textContent = now.toLocaleString();
+            
+            // Set date range defaults
+            const startDate = new Date();
+            startDate.setMonth(startDate.getMonth() - 6);
+            document.getElementById('startDate').valueAsDate = startDate;
+            document.getElementById('endDate').valueAsDate = new Date();
+            
+            // Initialize metrics
+            updateMetrics();
+            
+            // Initialize charts
+            initHourlyChart();
+            initDailyChart();
+            initMonthlyTrendsChart();
+            initVehicleDistributionChart();
+            initVehicleSuccessChart();
+            initVehicleRevenueChart();
+            initRevenueDistributionChart();
+            initRevenueTimeChart();
+            initDailyRevenueChart();
+            initCancellationReasonsChart();
+            initCancellationVehicleChart();
+            initLostRevenueChart();
+            initCustomerRatingsChart();
+            initDriverCustomerChart();
+            initCustomerTrendsChart();
+            initPickupLocationsChart();
+            initDropLocationsChart();
+            initLocationPerformanceChart();
+            initCorrelationChart();
+            initRevenueCategoriesChart();
+            initTimeSeriesChart();
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Update filter summary
+            updateFilterSummary();
+        });
+
+        // Update all metrics
+        function updateMetrics() {
+            const metrics = sampleData.metrics;
+            const deltas = sampleData.deltas;
+            
+            // Main KPIs
+            document.getElementById('totalBookings').textContent = metrics.totalBookings.toLocaleString();
+            document.getElementById('successRate').textContent = metrics.successRate.toFixed(1) + '%';
+            document.getElementById('totalRevenue').textContent = '₹' + metrics.totalRevenue.toLocaleString();
+            document.getElementById('avgRating').textContent = metrics.avgRating.toFixed(1) + '/5';
+            
+            // Deltas
+            document.getElementById('successDelta').textContent = (deltas.success >= 0 ? '📈 +' : '📉 ') + deltas.success.toFixed(1) + '% vs Industry';
+            document.getElementById('revenueDelta').textContent = (deltas.revenue >= 0 ? '📈 +₹' : '📉 -₹') + Math.abs(deltas.revenue) + ' vs Industry';
+            document.getElementById('ratingDelta').textContent = (deltas.rating >= 0 ? '📈 +' : '📉 ') + deltas.rating.toFixed(1) + ' vs Industry';
+            
+            // Additional metrics
+            document.getElementById('avgBookingValue').textContent = '₹' + metrics.avgBookingValue.toFixed(0);
+            document.getElementById('avgBookingDelta').textContent = (deltas.bookingValue >= 0 ? '₹+' : '₹-') + Math.abs(deltas.bookingValue);
+            document.getElementById('avgRideDistance').textContent = metrics.avgRideDistance.toFixed(1) + ' km';
+            document.getElementById('avgRideDelta').textContent = (deltas.rideDistance >= 0 ? '+' : '-') + Math.abs(deltas.rideDistance) + ' km';
+            document.getElementById('uniqueCustomers').textContent = metrics.uniqueCustomers.toLocaleString();
+            document.getElementById('uniqueCustomersDelta').textContent = (deltas.uniqueCustomers >= 0 ? '+' : '-') + Math.abs(deltas.uniqueCustomers);
+            document.getElementById('cancellationRate').textContent = metrics.cancellationRate.toFixed(1) + '%';
+            document.getElementById('cancellationDelta').textContent = (deltas.cancellation >= 0 ? '+' : '-') + Math.abs(deltas.cancellation) + '%';
+            
+            // Performance monitoring
+            document.getElementById('currentSuccessRate').textContent = metrics.currentSuccessRate.toFixed(1) + '%';
+            document.getElementById('successRateDelta').textContent = (deltas.successRate >= 0 ? '+' : '') + deltas.successRate.toFixed(1) + '%';
+            document.getElementById('successRateStatus').textContent = 
+                metrics.currentSuccessRate >= 95 ? '✅ Above target of 95.0%' : '⚠️ Below target of 95.0%';
+            document.getElementById('successRateStatus').className = 
+                metrics.currentSuccessRate >= 95 ? 'bg-green-100 bg-opacity-20 p-2 rounded-lg text-sm' : 'bg-yellow-100 bg-opacity-20 p-2 rounded-lg text-sm';
+            
+            document.getElementById('avgVTAT').textContent = metrics.avgVTAT.toFixed(1) + ' min';
+            document.getElementById('avgVTATDelta').textContent = (deltas.vtat >= 0 ? '+' : '') + deltas.vtat.toFixed(1) + ' min';
+            document.getElementById('avgCTAT').textContent = metrics.avgCTAT.toFixed(1) + ' min';
+            document.getElementById('avgCTATDelta').textContent = (deltas.ctat >= 0 ? '+' : '') + deltas.ctat.toFixed(1) + ' min';
+            
+            document.getElementById('currentCustomerRating').textContent = metrics.currentCustomerRating.toFixed(1) + '/5';
+            document.getElementById('customerRatingDelta').textContent = (deltas.customerRating >= 0 ? '+' : '') + deltas.customerRating.toFixed(1);
+            document.getElementById('currentDriverRating').textContent = metrics.currentDriverRating.toFixed(1) + '/5';
+            document.getElementById('driverRatingDelta').textContent = (deltas.driverRating >= 0 ? '+' : '') + deltas.driverRating.toFixed(1);
+            
+            // Update insights
+            updateInsights();
+        }
+
+        // Update filter summary
+        function updateFilterSummary() {
+            document.getElementById('filteredRecords').textContent = sampleData.filteredRecords.toLocaleString();
+            document.getElementById('totalRecords').textContent = sampleData.totalRecords.toLocaleString();
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            // Tab switching
+            document.querySelectorAll('.tab-item').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Remove active class from all tabs and panels
+                    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+                    
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    
+                    // Show corresponding panel
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.remove('hidden');
+                });
+            });
+            
+            // Reset filters button
+            document.getElementById('resetFilters').addEventListener('click', function() {
+                // Reset all filters to default
+                const startDate = new Date();
+                startDate.setMonth(startDate.getMonth() - 6);
+                document.getElementById('startDate').valueAsDate = startDate;
+                document.getElementById('endDate').valueAsDate = new Date();
+                
+                // Reset select elements
+                document.querySelectorAll('select').forEach(select => {
+                    if (select.multiple) {
+                        Array.from(select.options).forEach(option => {
+                            option.selected = true;
+                        });
+                    }
+                });
+                
+                // Update UI
+                updateFilterSummary();
+                alert('Filters have been reset to defaults');
+            });
+            
+            // Show sample button
+            document.getElementById('showSample').addEventListener('click', function() {
+                alert('Sample data would be displayed here in a real implementation');
+            });
+            
+            // Apply monthly filter button
+            document.getElementById('applyMonthlyFilter').addEventListener('click', function() {
+                alert('Monthly filter would be applied here in a real implementation');
+            });
+            
+            // Time metric and period changes
+            document.getElementById('timeMetric').addEventListener('change', function() {
+                updateHourlyChart();
+                updateDailyChart();
+            });
+            
+            document.getElementById('timePeriod').addEventListener('change', function() {
+                // In a real implementation, this would switch between hourly/daily/monthly/weekly views
+                alert('Time period would be updated here in a real implementation');
+            });
+            
+            // Monthly filter type changes
+            document.getElementById('monthlyFilterType').addEventListener('change', function() {
+                const type = this.value;
+                const label = document.getElementById('monthlyFilterLabel');
+                const select = document.getElementById('monthlyFilterValue');
+                
+                if (type === 'days') {
+                    label.textContent = '📅 Select Day:';
+                    select.innerHTML = `
+                        <option value="Monday">Monday</option>
+                        <option value="Tuesday">Tuesday</option>
+                        <option value="Wednesday">Wednesday</option>
+                        <option value="Thursday">Thursday</option>
+                        <option value="Friday">Friday</option>
+                        <option value="Saturday">Saturday</option>
+                        <option value="Sunday">Sunday</option>
+                    `;
+                } else if (type === 'time') {
+                    label.textContent = '🕒 Select Time:';
+                    select.innerHTML = `
+                        <option value="Morning">Morning</option>
+                        <option value="Afternoon">Afternoon</option>
+                        <option value="Evening">Evening</option>
+                        <option value="Night">Night</option>
+                    `;
+                } else if (type === 'monthly') {
+                    label.textContent = '📅 Select Month:';
+                    select.innerHTML = `
+                        <option value="Jan">Jan</option>
+                        <option value="Feb">Feb</option>
+                        <option value="Mar">Mar</option>
+                        <option value="Apr">Apr</option>
+                        <option value="May">May</option>
+                        <option value="Jun">Jun</option>
+                        <option value="Jul">Jul</option>
+                        <option value="Aug">Aug</option>
+                        <option value="Sep">Sep</option>
+                        <option value="Oct">Oct</option>
+                        <option value="Nov">Nov</option>
+                        <option value="Dec">Dec</option>
+                    `;
+                } else {
+                    label.textContent = 'Overall Analysis';
+                    select.innerHTML = '<option value="overall">Overall</option>';
+                }
+            });
+        }
+
+        // Update insights text
+        function updateInsights() {
+            // Vehicle insights
+            document.getElementById('mostPopularVehicle').textContent = 
+                `${sampleData.vehicleData.types[0]} is the most popular vehicle type with ${sampleData.vehicleData.distribution[0]}% of all bookings.`;
+            document.getElementById('bestSuccessVehicle').textContent = 
+                `${sampleData.vehicleData.types[2]} vehicles have the highest success rate at ${(sampleData.vehicleData.success[2]*100).toFixed(0)}%.`;
+            document.getElementById('bestRevenueVehicle').textContent = 
+                `${sampleData.vehicleData.types[1]}s generate the highest average revenue per booking at ₹${sampleData.vehicleData.revenue[1]}.`;
+            document.getElementById('bestRatingVehicle').textContent = 
+                `${sampleData.vehicleData.types[2]} vehicles receive the highest customer ratings at ${sampleData.vehicleData.rating[2]}/5.`;
+            
+            // Revenue insights
+            document.getElementById('revenuePattern').textContent = 
+                'Evening hours generate 45% of total revenue despite only 30% of bookings.';
+            document.getElementById('timePricing').textContent = 
+                'Consider surge pricing during peak revenue hours (6-9 PM).';
+            document.getElementById('vehicleMix').textContent = 
+                'SUVs and Luxury vehicles contribute 65% of total revenue.';
+            document.getElementById('seasonalTrend').textContent = 
+                'December shows a 25% revenue increase compared to average months.';
+            
+            // Cancellation insights
+            document.getElementById('vehicleCancellation').textContent = 
+                'Pool rides have the highest cancellation rate at 12%.';
+            document.getElementById('timeCancellation').textContent = 
+                'Morning hours (7-9 AM) see 40% higher cancellation rates.';
+            document.getElementById('financialImpact').textContent = 
+                'Cancellations result in ₹1.2M lost revenue monthly.';
+            document.getElementById('targetedSolutions').textContent = 
+                'Implement cancellation fees during peak hours to reduce no-shows.';
+            
+            // Customer insights
+            document.getElementById('ratingPattern').textContent = 
+                'Most customers rate 4-5 stars, with only 8% rating below 3 stars.';
+            document.getElementById('driverImpact').textContent = 
+                'Higher driver ratings correlate with better customer ratings (r=0.62).';
+            document.getElementById('customerTrend').textContent = 
+                'Customer satisfaction has improved by 0.3 points over the last 6 months.';
+            document.getElementById('vehiclePreference').textContent = 
+                'Luxury vehicles receive consistently higher ratings (avg 4.8/5).';
+            
+            // Geographic insights
+            document.getElementById('hotspots').textContent = 
+                'Downtown area accounts for 35% of all pickups and 28% of drop-offs.';
+            document.getElementById('locationSuccess').textContent = 
+                'Airport pickups have the highest success rate at 98%.';
+            document.getElementById('revenueDensity').textContent = 
+                'Business district generates ₹2.5M monthly revenue.';
+            document.getElementById('expansionAreas').textContent = 
+                'Suburban areas show 15% MoM growth in ride demand.';
+            
+            // Correlation insight
+            const correlation = 0.62;
+            let correlationText = '';
+            let correlationClass = '';
+            
+            if (correlation > 0.5) {
+                correlationText = `Strong Positive Correlation: Driver and Customer ratings are well aligned (r=${correlation.toFixed(2)})`;
+                correlationClass = 'bg-green-100 text-green-800';
+            } else if (correlation > 0.2) {
+                correlationText = `Moderate Correlation: Some relationship between driver and customer ratings (r=${correlation.toFixed(2)})`;
+                correlationClass = 'bg-blue-100 text-blue-800';
+            } else {
+                correlationText = `Weak Correlation: Limited relationship between driver and customer ratings (r=${correlation.toFixed(2)})`;
+                correlationClass = 'bg-yellow-100 text-yellow-800';
+            }
+            
+            document.getElementById('correlationInsight').innerHTML = 
+                `<p class="text-sm ${correlationClass} p-2 rounded">🔗 <span class="font-medium">Correlation Analysis:</span> ${correlationText}</p>`;
+            
+            // Update peak hours/days
+            updatePeakMetrics();
+        }
+
+        // Update peak metrics
+        function updatePeakMetrics() {
+            // Hourly metrics
+            const hourlyBookings = sampleData.hourlyData.bookings;
+            const maxHourIndex = hourlyBookings.indexOf(Math.max(...hourlyBookings));
+            const minHourIndex = hourlyBookings.indexOf(Math.min(...hourlyBookings));
+            
+            document.getElementById('peakHour').textContent = 
+                `${maxHourIndex}:00 (${hourlyBookings[maxHourIndex].toLocaleString()})`;
+            document.getElementById('lowHour').textContent = 
+                `${minHourIndex}:00 (${hourlyBookings[minHourIndex].toLocaleString()})`;
+            
+            // Daily metrics
+            const dailyBookings = sampleData.dailyData.bookings;
+            const maxDayIndex = dailyBookings.indexOf(Math.max(...dailyBookings));
+            const minDayIndex = dailyBookings.indexOf(Math.min(...dailyBookings));
+            
+            document.getElementById('bestDay').textContent = 
+                `${sampleData.dailyData.days[maxDayIndex]} (${dailyBookings[maxDayIndex].toLocaleString()})`;
+            document.getElementById('worstDay').textContent = 
+                `${sampleData.dailyData.days[minDayIndex]} (${dailyBookings[minDayIndex].toLocaleString()})`;
+            
+            // Monthly metrics
+            const monthlyBookings = sampleData.monthlyData.bookings;
+            const maxMonthIndex = monthlyBookings.indexOf(Math.max(...monthlyBookings));
+            const maxRevenueIndex = sampleData.monthlyData.revenue.indexOf(Math.max(...sampleData.monthlyData.revenue));
+            const maxRatingIndex = sampleData.monthlyData.rating.indexOf(Math.max(...sampleData.monthlyData.rating));
+            
+            document.getElementById('peakMonth').textContent = 
+                `${sampleData.monthlyData.months[maxMonthIndex]} (${monthlyBookings[maxMonthIndex].toLocaleString()} bookings)`;
+            document.getElementById('revenuePeakMonth').textContent = 
+                `${sampleData.monthlyData.months[maxRevenueIndex]} (₹${(sampleData.monthlyData.revenue[maxRevenueIndex]/1000).toFixed(0)}K)`;
+            document.getElementById('ratingPeakMonth').textContent = 
+                `${sampleData.monthlyData.months[maxRatingIndex]} (${sampleData.monthlyData.rating[maxRatingIndex].toFixed(2)})`;
+            
+            // Customer trends
+            document.getElementById('overallRating').textContent = sampleData.metrics.avgRating.toFixed(2) + '/5';
+            document.getElementById('overallRatingDelta').textContent = (sampleData.deltas.rating >= 0 ? '+' : '') + sampleData.deltas.rating.toFixed(2);
+            
+            // For demo purposes, set best/worst days to first/last day of data
+            document.getElementById('bestRatingDay').textContent = '2023-06-15 (4.95)';
+            document.getElementById('worstRatingDay').textContent = '2023-01-02 (3.80)';
+        }
+
+        // Chart initialization functions
+        function initHourlyChart() {
+            const metric = document.getElementById('timeMetric').value;
+            updateHourlyChart(metric);
+        }
+
+        function updateHourlyChart(metric = 'bookings') {
+            const hours = sampleData.hourlyData.hours;
+            let yData, yTitle, lineColor;
+            
+            if (metric === 'bookings') {
+                yData = sampleData.hourlyData.bookings;
+                yTitle = 'Number of Bookings';
+                lineColor = '#FF6B6B';
+            } else if (metric === 'success') {
+                yData = sampleData.hourlyData.success.map(v => v * 100);
+                yTitle = 'Success Rate (%)';
+                lineColor = '#4ECDC4';
+            } else if (metric === 'revenue') {
+                yData = sampleData.hourlyData.revenue;
+                yTitle = 'Average Revenue (₹)';
+                lineColor = '#45B7D1';
+            } else {
+                yData = sampleData.hourlyData.rating;
+                yTitle = 'Customer Rating';
+                lineColor = '#96CEB4';
+            }
+            
+            const showTrends = document.getElementById('showTrends').checked;
+            
+            const trace1 =
+</body>
+</html>

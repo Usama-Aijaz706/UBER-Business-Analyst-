@@ -1,0 +1,26 @@
+UBER RIDE ANALYTICS 2024 - EXPLORATORY DATA ANALYSIS REPORT
+======================================================================
+
+📊 DATASET OVERVIEW
+------------------------------
+Total Records: 150,000
+Date Range: 2024-01-01 00:00:00 to 2024-12-30 00:00:00
+Vehicle Types: 7
+Unique Customers: 148,788
+Total Revenue: ₹71,718,183.00
+
+🔍 KEY INSIGHTS
+------------------------------
+• Overall Success Rate: 62.00%
+• Most Popular Vehicle: Auto (37,419 bookings)
+• Peak Hour: 18:00 (12,397 bookings)
+• Average Booking Value: ₹478.12
+• Average Customer Rating: 4.44/5
+
+📈 BUSINESS RECOMMENDATIONS
+------------------------------
+• Optimize vehicle allocation during peak hours
+• Focus on improving success rates for underperforming vehicle types
+• Implement dynamic pricing during high-demand periods
+• Address cancellation reasons to reduce lost revenue
+• Monitor and improve driver and customer satisfaction
